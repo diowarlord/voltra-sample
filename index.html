@@ -678,6 +678,7 @@ renderCart();
     document.querySelectorAll(".reveal").forEach(el=>io.observe(el))};
   if(!window.gsap||!window.ScrollTrigger){fallback();return}
   gsap.registerPlugin(ScrollTrigger);
+  ScrollTrigger.config({ignoreMobileResize:true});
   const mm=gsap.matchMedia();
 
   // split text into per-character spans (keeps words intact for wrapping)
@@ -774,10 +775,22 @@ renderCart();
     gsap.utils.toArray(".sub").forEach(s=>gsap.from(s,{y:20,opacity:0,duration:.8,scrollTrigger:{trigger:s,start:"top 90%"}}));
 
     // ---------- formula cards ----------
-    // cards slide in from the left, one after another, tied to the scroll position
-    const slide=gsap.timeline({scrollTrigger:{trigger:"#cats",start:"top 95%",end:"top 35%",scrub:1}});
-    slide.from(".cat",{x:()=>-innerWidth,ease:"power2.out",stagger:.18},0)
-      .from(".cat .glow",{scale:.3,opacity:0,ease:"power2.out",stagger:.18},0);
+    if(isDesk){
+      // desktop: cards slide in from the left, one after another, tied to the scroll position
+      const slide=gsap.timeline({scrollTrigger:{trigger:"#cats",start:"top 95%",end:"top 35%",scrub:1}});
+      slide.from(".cat",{x:()=>-innerWidth,ease:"power2.out",stagger:.18},0)
+        .from(".cat .glow",{scale:.3,opacity:0,ease:"power2.out",stagger:.18},0);
+    }else{
+      // phone: touch scrolling isn't smoothed, so a scroll-scrubbed slide stutters.
+      // Each card instead plays its own timed, GPU-only slide when it scrolls into view.
+      gsap.utils.toArray(".cat").forEach(c=>{
+        gsap.set(c,{xPercent:-112,force3D:true});
+        ScrollTrigger.create({trigger:c,start:"top 92%",once:true,onEnter:()=>{
+          c.style.willChange="transform";
+          gsap.to(c,{xPercent:0,duration:.85,ease:"power3.out",force3D:true,onComplete:()=>{c.style.willChange="";gsap.set(c,{clearProps:"transform"})}});
+        }});
+      });
+    }
     if(matchMedia("(hover:hover)").matches) gsap.utils.toArray(".cat").forEach(c=>{
       c.addEventListener("pointerenter",()=>gsap.to(c,{y:-8,duration:.4,ease:"power3.out"}));
       c.addEventListener("pointerleave",()=>gsap.to(c,{y:0,duration:.5,ease:"power3.out"}));
