@@ -715,6 +715,8 @@ renderCart();
   mm.add("(prefers-reduced-motion: no-preference)",()=>{
     document.documentElement.classList.add("gsap");
     const isDesk=matchMedia("(min-width:761px)").matches;
+    // touch screens (phones in any orientation, tablets) scroll natively, so scroll-scrubbed motion stutters there
+    const finePointer=matchMedia("(hover:hover) and (pointer:fine)").matches;
 
 
 
@@ -785,13 +787,13 @@ renderCart();
     gsap.utils.toArray(".sub").forEach(s=>gsap.from(s,{y:20,opacity:0,duration:.8,scrollTrigger:{trigger:s,start:"top 90%"}}));
 
     // ---------- formula cards ----------
-    if(isDesk){
-      // desktop: cards slide in from the left, one after another, tied to the scroll position
+    if(isDesk&&finePointer){
+      // mouse/trackpad: cards slide in from the left, one after another, tied to the scroll position
       const slide=gsap.timeline({scrollTrigger:{trigger:"#cats",start:"top 95%",end:"top 35%",scrub:1}});
       slide.from(".cat",{x:()=>-innerWidth,ease:"power2.out",stagger:.18},0)
         .from(".cat .glow",{scale:.3,opacity:0,ease:"power2.out",stagger:.18},0);
     }else{
-      // phone: touch scrolling isn't smoothed, so a scroll-scrubbed slide stutters.
+      // touch devices: touch scrolling isn't smoothed, so a scroll-scrubbed slide stutters.
       // Each card instead plays its own timed, GPU-only slide when it scrolls into view.
       gsap.utils.toArray(".cat").forEach(c=>{
         gsap.set(c,{xPercent:-112,force3D:true});
