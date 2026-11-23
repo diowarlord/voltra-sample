@@ -7,14 +7,14 @@
 <title>Voltra — Sports Drinks for People Who Move</title>
 <meta name="description" content="Voltra sports drinks with electrolytes and vitamins, made for people who move. Sample online store.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%23c6ff3d%27/%3E%3Ctext x=%2716%27 y=%2723%27 text-anchor=%27middle%27 font-family=%27Arial Black,sans-serif%27 font-size=%2720%27%3EV%3C/text%3E%3C/svg%3E">
-<link rel="preload" href="assets/fonts/unbounded-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/cans/citrus-surge.webp" as="image" fetchpriority="high">
-<link rel="preload" href="assets/cans/blue-blast.webp" as="image" fetchpriority="high">
-<link rel="preload" href="assets/cans/lime-force.webp" as="image" fetchpriority="high">
+<link rel="preload" href="assets/fonts/unbounded-sub.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/manrope-sub.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/cans/citrus-surge.avif" as="image" type="image/avif" fetchpriority="high">
+<link rel="preload" href="assets/cans/blue-blast.avif" as="image" type="image/avif" fetchpriority="high">
+<link rel="preload" href="assets/cans/lime-force.avif" as="image" type="image/avif" fetchpriority="high">
 <style>
-@font-face{font-family:"Unbounded";font-style:normal;font-weight:500 900;font-display:swap;src:url(assets/fonts/unbounded-latin.woff2) format("woff2")}
-@font-face{font-family:"Manrope";font-style:normal;font-weight:400 800;font-display:swap;src:url(assets/fonts/manrope-latin.woff2) format("woff2")}
+@font-face{font-family:"Unbounded";font-style:normal;font-weight:500 900;font-display:swap;src:url(assets/fonts/unbounded-sub.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-style:normal;font-weight:400 800;font-display:swap;src:url(assets/fonts/manrope-sub.woff2) format("woff2")}
 :root{
   --bg:#060608; --panel:#121216; --panel-2:#1b1b21; --line:#2a2a32;
   --ink:#f5f5f7; --muted:#9a9aa6; --accent:#c6ff3d; --hot:#ff3d6e;
@@ -536,11 +536,13 @@ const $ = s=>document.querySelector(s);
 const money = n=>"$"+n.toFixed(2);
 
 // ---------- can artwork (SVG) ----------
-// product cans are transparent WebP cut-outs from the product photo (assets/cans)
-const canSrc = p => `assets/cans/${p.img}.webp`;
+// product cans: transparent AVIF cut-outs from the product photo (assets/cans), ~60% smaller than WebP.
+// Browsers that can't show AVIF swap to the WebP copy automatically.
+const canSrc = p => `assets/cans/${p.img}.avif`;
+const CAN_FALLBACK = `onerror="this.onerror=null;this.src=this.src.replace('.avif','.webp')"`;
 function can(p){
-  if(p.pack) return `<div class="can pack" aria-hidden="true">${[0,1,2].map(()=>`<img src="${canSrc(p)}" alt="" draggable="false">`).join("")}</div>`;
-  return `<img class="can" src="${canSrc(p)}" alt="" draggable="false" decoding="async">`;
+  if(p.pack) return `<div class="can pack" aria-hidden="true">${[0,1,2].map(()=>`<img src="${canSrc(p)}" alt="" draggable="false" decoding="async" ${CAN_FALLBACK}>`).join("")}</div>`;
+  return `<img class="can" src="${canSrc(p)}" alt="" draggable="false" decoding="async" ${CAN_FALLBACK}>`;
 }
 const byId = id=>PRODUCTS.find(p=>p.id===id);
 
@@ -698,7 +700,6 @@ if("IntersectionObserver" in window){
 
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
-<script src="assets/vendor/lenis.min.js"></script>
 <script>
 // ================= MOTION LAYER =================
 (function(){
@@ -740,7 +741,7 @@ if("IntersectionObserver" in window){
 
 
     // smooth, eased wheel scrolling (touch keeps native momentum)
-    if(window.Lenis&&!touch){
+    const startLenis=()=>{
       window.lenis=new Lenis({duration:1.1,easing:t=>Math.min(1,1.001-Math.pow(2,-10*t)),smoothWheel:true});
       lenis.on("scroll",ScrollTrigger.update);
       gsap.ticker.add(t=>lenis.raf(t*1000));
@@ -752,6 +753,10 @@ if("IntersectionObserver" in window){
         const t=id==="#top"?0:document.querySelector(id); if(t===null)return;
         e.preventDefault(); lenis.scrollTo(t,{offset:-80,duration:1.4});
       });
+    };
+    if(!touch){
+      const ls=document.createElement("script");
+      ls.src="assets/vendor/lenis.min.js"; ls.onload=startLenis; document.head.appendChild(ls);
     }
 
     // ---------- hero intro ----------
