@@ -7,10 +7,14 @@
 <title>Voltra — Sports Drinks for People Who Move</title>
 <meta name="description" content="Voltra sports drinks with electrolytes and vitamins, made for people who move. Sample online store.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%23c6ff3d%27/%3E%3Ctext x=%2716%27 y=%2723%27 text-anchor=%27middle%27 font-family=%27Arial Black,sans-serif%27 font-size=%2720%27%3EV%3C/text%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" href="assets/fonts/unbounded-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/cans/citrus-surge.webp" as="image" fetchpriority="high">
+<link rel="preload" href="assets/cans/blue-blast.webp" as="image" fetchpriority="high">
+<link rel="preload" href="assets/cans/lime-force.webp" as="image" fetchpriority="high">
 <style>
+@font-face{font-family:"Unbounded";font-style:normal;font-weight:500 900;font-display:swap;src:url(assets/fonts/unbounded-latin.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-style:normal;font-weight:400 800;font-display:swap;src:url(assets/fonts/manrope-latin.woff2) format("woff2")}
 :root{
   --bg:#060608; --panel:#121216; --panel-2:#1b1b21; --line:#2a2a32;
   --ink:#f5f5f7; --muted:#9a9aa6; --accent:#c6ff3d; --hot:#ff3d6e;
@@ -674,9 +678,9 @@ addEventListener("scroll",()=>hdr.classList.toggle("stuck",scrollY>$(".hero-card
 renderCart();
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/vendor/lenis.min.js"></script>
 <script>
 // ================= MOTION LAYER =================
 (function(){
@@ -748,11 +752,11 @@ renderCart();
     const intro=gsap.timeline({defaults:{ease:"power4.out"}});
     intro.from(".ticker",{opacity:0,duration:.6})
       .from("#siteHeader .nav > *",{opacity:0,y:-14,duration:.7,stagger:.08},.15)
-      .fromTo(".hero-card",{clipPath:"inset(6% 6% 6% 6% round 40px)"},{clipPath:"inset(0% 0% 0% 0% round 28px)",duration:1.2,ease:"power3.inOut",clearProps:"clipPath"},0)
-      .from(chars,{yPercent:115,rotation:12,duration:1,stagger:.035},.35)
-      .from(cans,{y:()=>innerHeight*.7,rotation:(i)=>rots[i]*-1.5,opacity:0,duration:1.4,stagger:.12,ease:"back.out(1.2)"},.55)
-      .from(".glass",{y:50,opacity:0,filter:"blur(12px)",duration:1},1.1)
-      .from(".glass .btn",{y:16,opacity:0,stagger:.08,duration:.6},1.35);
+      .fromTo(".hero-card",{clipPath:"inset(4% 4% 4% 4% round 40px)"},{clipPath:"inset(0% 0% 0% 0% round 28px)",duration:.8,ease:"power3.inOut",clearProps:"clipPath"},0)
+      .from(chars,{yPercent:115,rotation:12,duration:.7,stagger:.022},.1)
+      .from(cans,{y:()=>innerHeight*.5,rotation:(i)=>rots[i]*-1.4,opacity:0,duration:.95,stagger:.08,ease:"back.out(1.2)"},.2)
+      .from(".glass",{y:36,opacity:0,duration:.7},.55)
+      .from(".glass .btn",{y:14,opacity:0,stagger:.06,duration:.5},.75);
 
     // hero scroll-out: cans spread apart, title drifts down & fades
     const heroTL=gsap.timeline({scrollTrigger:{trigger:".hero-card",start:"top top",end:"bottom top",scrub:.6}});
