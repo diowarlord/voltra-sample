@@ -319,6 +319,15 @@ img.can{height:auto;user-select:none;-webkit-user-drag:none}
   .cats{grid-template-columns:1fr;gap:14px}
   .cat{min-height:auto;flex-direction:row;align-items:center;gap:16px;padding:16px}
   .cat .can{width:70px;margin:0;transition:none}
+  /* compositor-only entrance: card rises in, can pops up with a bounce, text follows, arrow spins in */
+  .cat-io .cat{opacity:0;transform:translate3d(0,46px,0)}
+  .cat-io .cat.in{animation:catRise .6s cubic-bezier(.2,.8,.2,1) forwards}
+  .cat-io .cat .can{opacity:0;transform:translate3d(0,70%,0) rotate(-38deg) scale(.55)}
+  .cat-io .cat.in .can{animation:canPop .75s cubic-bezier(.34,1.56,.64,1) .12s forwards}
+  .cat-io .cat.in .cat-foot h3,.cat-io .cat.in .cat-foot small{animation:textIn .5s cubic-bezier(.2,.8,.2,1) backwards}
+  .cat-io .cat.in .cat-foot h3{animation-delay:.28s}
+  .cat-io .cat.in .cat-foot small{animation-delay:.36s}
+  .cat-io .cat.in .arrow{animation:arrowSpin .6s cubic-bezier(.34,1.8,.64,1) .38s backwards}
   .cat-foot{flex:1;margin:0;padding:0}
   .grid{grid-template-columns:1fr 1fr;gap:12px}
   .card{padding:10px}
@@ -347,6 +356,10 @@ img.can{height:auto;user-select:none;-webkit-user-drag:none}
   .rev-nav button{width:52px;height:52px}
   .foot > div:first-child{grid-column:1/-1}
 }
+@keyframes catRise{to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes canPop{to{opacity:1;transform:translate3d(0,0,0) rotate(-10deg) scale(1)}}
+@keyframes textIn{from{opacity:0;transform:translate3d(24px,0,0)}}
+@keyframes arrowSpin{from{transform:scale(0) rotate(-180deg)}}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .reveal{opacity:1;transform:none}
@@ -791,18 +804,11 @@ if("IntersectionObserver" in window){
     // Cards that enter together (one desktop row) are staggered left to right.
     const catCards=gsap.utils.toArray(".cat");
     if(matchMedia("(max-width:760px)").matches){
-      // Phone: each card is a row (can · name · arrow), so it gets its own entrance:
-      // the card rises in, the can pops up out of it with a bounce, the text follows, the arrow spins in.
-      catCards.forEach(c=>{
-        const can=c.querySelector(".can"), text=c.querySelectorAll(".cat-foot h3,.cat-foot small"), arrow=c.querySelector(".arrow");
-        const tl=gsap.timeline({paused:true,defaults:{force3D:true}})
-          .fromTo(c,{y:46,opacity:0},{y:0,opacity:1,duration:.6,ease:"power3.out"})
-          .fromTo(can,{yPercent:70,scale:.55,rotation:-38,opacity:0},{yPercent:0,scale:1,rotation:-10,opacity:1,duration:.75,ease:"back.out(1.7)"},.12)
-          .fromTo(text,{x:24,opacity:0},{x:0,opacity:1,duration:.5,stagger:.08,ease:"power2.out"},.28)
-          .fromTo(arrow,{scale:0,rotation:-180},{scale:1,rotation:0,duration:.6,ease:"back.out(2)"},.38);
-        tl.progress(0);
-        ScrollTrigger.create({trigger:c,start:"top 90%",once:true,onEnter:()=>tl.play()});
-      });
+      // Phone: the entrance is pure CSS keyframes (transform/opacity) that the GPU compositor runs by itself,
+      // so it stays smooth even while the main thread is busy on first load. Script only adds a class once.
+      document.documentElement.classList.add("cat-io");
+      const catIO=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("in"); catIO.unobserve(e.target); } }),{rootMargin:"0px 0px -8% 0px"});
+      catCards.forEach(c=>catIO.observe(c));
     }else{
       // Tablet / desktop: cards slide in from the left; cards in the same row are staggered left to right.
       gsap.set(catCards,{xPercent:-112,opacity:0,force3D:true});
