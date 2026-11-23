@@ -188,7 +188,7 @@ section{padding:110px 0}
 .trust h2 b{display:block;font-weight:900}
 .trust p{color:#c9c9d2;font-size:14px;margin-top:12px}
 .trust .count{font-weight:800;margin-top:12px}
-.rev-row{display:flex;gap:20px;margin-top:56px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;scrollbar-width:none}
+.rev-row{display:flex;gap:20px;margin-top:56px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding-bottom:12px;scrollbar-width:none}
 .rev-row::-webkit-scrollbar{display:none}
 .rev{flex:0 0 340px;scroll-snap-align:start;background:var(--panel);border-radius:var(--radius);padding:26px;border:1px solid var(--line)}
 .rev .stars{color:#ffe46b;font-size:14px;letter-spacing:2px}
@@ -851,7 +851,10 @@ renderCart();
       .fromTo(".duo-img img",{scale:1.15},{scale:1,ease:"none"},0);
     gsap.from(".trust",{scale:.85,opacity:0,duration:1,ease:"power3.out",scrollTrigger:{trigger:".trust",start:"top 85%"}});
     gsap.from(".trust .stars",{letterSpacing:"20px",opacity:0,duration:1.2,ease:"power3.out",delay:.2,scrollTrigger:{trigger:".trust",start:"top 85%"}});
-    gsap.from(".rev",{x:120,opacity:0,duration:1,stagger:.1,ease:"power3.out",scrollTrigger:{trigger:".rev-row",start:"top 88%"}});
+    // the review row scroll-snaps; moving cards inside it makes the browser re-snap every frame (flicker),
+    // so the row moves as one piece and the cards only fade
+    gsap.from(".rev-row",{x:80,opacity:0,duration:1,ease:"power3.out",force3D:true,clearProps:"transform",scrollTrigger:{trigger:".rev-row",start:"top 90%",once:true}});
+    gsap.from(".rev",{opacity:0,duration:.8,stagger:.08,ease:"power2.out",scrollTrigger:{trigger:".rev-row",start:"top 90%",once:true}});
 
     // ---------- newsletter ----------
     gsap.from(".news-card",{y:100,rotation:-3,opacity:0,duration:1.1,ease:"power3.out",scrollTrigger:{trigger:".news-card",start:"top 88%"}});
