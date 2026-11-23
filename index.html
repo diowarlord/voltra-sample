@@ -42,15 +42,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
 
 /* marquee */
-/* shipping ticker */
-.ticker{background:#d80b2e;color:#fff;font-size:15px;font-weight:500;overflow:hidden;white-space:nowrap;height:38px;display:flex;align-items:center}
-.ticker-track{display:inline-flex;align-items:center;animation:tick 30s linear infinite;will-change:transform}
-.ticker-track span{display:inline-flex;align-items:center;gap:18px;padding-right:18px}
-.ticker .bolt{flex:none;width:14px;height:16px;max-width:none}
-@keyframes tick{to{transform:translateX(-50%)}}
-.gsap.fine .ticker-track{animation:none}
-/* looping decorations pause while off-screen, so the rest of the page scrolls with no background animation work */
-.ticker.offscreen .ticker-track,.hero-card.offscreen .hc .can{animation-play-state:paused}
+/* the bobbing hero cans pause while off-screen, so the rest of the page scrolls with no background animation work */
+.hero-card.offscreen .hc .can{animation-play-state:paused}
 
 /* header: rides on top of the hero card, then docks to the viewport */
 .hero{position:relative}
@@ -312,20 +305,20 @@ img.can{height:auto;user-select:none;-webkit-user-drag:none}
 }
 @media (max-width:760px){
   .wrap{padding:0 16px}
+  .hero{padding-top:calc(8px + env(safe-area-inset-top))}
   .links,.nav-right .login{display:none}
   header{left:16px;right:16px}
   .nav{grid-template-columns:1fr auto;height:64px;padding:0 16px}
   header.stuck .nav{height:58px;padding:0 16px}
   .logo.wordmark,header.stuck .logo.wordmark{font-size:24px}
   .nav-right{gap:12px}
-  .ticker{font-size:13px;height:34px}
   .burger{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);color:#fff}
   section{padding:72px 0}
   .hero-card{border-radius:22px;padding:92px 16px 28px;min-height:auto}
   .glass{margin-top:-50px;padding:22px 18px;background:rgba(14,14,22,.78);-webkit-backdrop-filter:none;backdrop-filter:none}
   .cats{grid-template-columns:1fr;gap:14px}
   .cat{min-height:auto;flex-direction:row;align-items:center;gap:16px;padding:16px}
-  .cat .can{width:70px;margin:0}
+  .cat .can{width:70px;margin:0;transition:none}
   .cat-foot{flex:1;margin:0;padding:0}
   .grid{grid-template-columns:1fr 1fr;gap:12px}
   .card{padding:10px}
@@ -361,19 +354,12 @@ img.can{height:auto;user-select:none;-webkit-user-drag:none}
 </style>
 </head>
 <body>
-
-<div class="ticker" id="top" aria-label="Free shipping on orders over $40">
-  <div class="ticker-track" aria-hidden="true"></div>
-</div>
-
-
-
 <div class="mnav" id="mnav">
   <a href="#shop">Shop All</a><a href="#formulas">Formulas</a><a href="#contact">Contact</a>
 </div>
 
 <main>
-<div class="wrap hero">
+<div class="wrap hero" id="top">
 <header id="siteHeader">
   <div class="nav">
     <a href="#top" class="logo wordmark">Voltra</a>
@@ -546,7 +532,6 @@ function can(p){
 const byId = id=>PRODUCTS.find(p=>p.id===id);
 
 // ---------- render ----------
-$(".ticker-track").innerHTML = Array(2).fill("<span>"+Array(6).fill("Free shipping on orders over $40 <svg class=\"bolt\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z\" fill=\"currentColor\"/></svg>").join("</span><span>")+"</span>").join("");
 
 $("#heroCans").innerHTML = [1,2,3].map((id,i)=>`<div class="hc hc${i+1}">${can(byId(id))}</div>`).join("");
 $("#pc1").innerHTML = can(byId(3));
@@ -689,13 +674,12 @@ addEventListener("resize",measureDock,{passive:true});
 addEventListener("load",()=>requestAnimationFrame(()=>{measureDock();onScroll()}));
 addEventListener("scroll",onScroll,{passive:true});
 renderCart();
-// pause looping decorations (ticker, bobbing hero cans) whenever they are scrolled out of view
+// pause the bobbing hero cans whenever they are scrolled out of view
 if("IntersectionObserver" in window){
   const loopIO=new IntersectionObserver(es=>es.forEach(e=>{
     e.target.classList.toggle("offscreen",!e.isIntersecting);
-    if(e.target.classList.contains("ticker")&&window.__tick) e.isIntersecting?__tick.play():__tick.pause();
   }));
-  loopIO.observe($(".ticker")); loopIO.observe($(".hero-card"));
+  loopIO.observe($(".hero-card"));
 }
 </script>
 
@@ -757,20 +741,6 @@ if("IntersectionObserver" in window){
       });
     }
 
-    // ticker loop: speeds up with scroll velocity (one eased tween, no per-frame tween spam)
-    // On touch screens the ticker stays a pure CSS animation: it runs on the compositor and costs the
-    // main thread nothing (a script-driven loop here kept the phone busy every single frame).
-    if(!touch){
-      document.documentElement.classList.add("fine");
-      const tick=window.__tick=gsap.to(".ticker-track",{xPercent:-50,ease:"none",duration:30,repeat:-1});
-      const tickSpeed=gsap.quickTo(tick,"timeScale",{duration:.6,ease:"power2.out"});
-      let settle;
-      ScrollTrigger.create({onUpdate:st=>{
-        tickSpeed(1+Math.min(4,Math.abs(st.getVelocity())/500));
-        clearTimeout(settle); settle=setTimeout(()=>tickSpeed(1),160);
-      }});
-    }
-
     // ---------- hero intro ----------
     const h1=$(".hero h1");
     h1.querySelectorAll(":scope > span").forEach(s=>s.classList.add("line"));
@@ -779,8 +749,7 @@ if("IntersectionObserver" in window){
     const rots=[-24,-8,22];
     gsap.set(cans,{rotation:i=>rots[i]});
     const intro=gsap.timeline({defaults:{ease:"power4.out"}});
-    intro.from(".ticker",{opacity:0,duration:.6})
-      .from("#siteHeader .nav > *",{opacity:0,y:-14,duration:.7,stagger:.08},.15)
+    intro.from("#siteHeader .nav > *",{opacity:0,y:-14,duration:.7,stagger:.08},.15)
       .fromTo(".hero-card",{clipPath:"inset(4% 4% 4% 4% round 40px)"},{clipPath:"inset(0% 0% 0% 0% round 28px)",duration:.8,ease:"power3.inOut",clearProps:"clipPath"},0)
       .from(chars,{yPercent:115,rotation:12,duration:.7,stagger:.022},.1)
       .from(cans,{y:()=>innerHeight*.5,rotation:(i)=>rots[i]*-1.4,opacity:0,duration:.95,stagger:.08,ease:"back.out(1.2)"},.2)
@@ -821,12 +790,28 @@ if("IntersectionObserver" in window){
     // (A scroll-scrubbed version stuttered on touch screens; timed motion is smooth on every device.)
     // Cards that enter together (one desktop row) are staggered left to right.
     const catCards=gsap.utils.toArray(".cat");
-    gsap.set(catCards,{xPercent:-112,opacity:0,force3D:true});
-    ScrollTrigger.batch(catCards,{start:"top 92%",once:true,onEnter:batch=>{
-      batch.forEach(c=>c.style.willChange="transform,opacity");
-      gsap.to(batch,{xPercent:0,opacity:1,duration:.9,ease:"power3.out",stagger:.12,force3D:true,
-        onComplete:()=>batch.forEach(c=>{c.style.willChange="";gsap.set(c,{clearProps:"transform"})})});
-    }});
+    if(matchMedia("(max-width:760px)").matches){
+      // Phone: each card is a row (can · name · arrow), so it gets its own entrance:
+      // the card rises in, the can pops up out of it with a bounce, the text follows, the arrow spins in.
+      catCards.forEach(c=>{
+        const can=c.querySelector(".can"), text=c.querySelectorAll(".cat-foot h3,.cat-foot small"), arrow=c.querySelector(".arrow");
+        const tl=gsap.timeline({paused:true,defaults:{force3D:true}})
+          .fromTo(c,{y:46,opacity:0},{y:0,opacity:1,duration:.6,ease:"power3.out"})
+          .fromTo(can,{yPercent:70,scale:.55,rotation:-38,opacity:0},{yPercent:0,scale:1,rotation:-10,opacity:1,duration:.75,ease:"back.out(1.7)"},.12)
+          .fromTo(text,{x:24,opacity:0},{x:0,opacity:1,duration:.5,stagger:.08,ease:"power2.out"},.28)
+          .fromTo(arrow,{scale:0,rotation:-180},{scale:1,rotation:0,duration:.6,ease:"back.out(2)"},.38);
+        tl.progress(0);
+        ScrollTrigger.create({trigger:c,start:"top 90%",once:true,onEnter:()=>tl.play()});
+      });
+    }else{
+      // Tablet / desktop: cards slide in from the left; cards in the same row are staggered left to right.
+      gsap.set(catCards,{xPercent:-112,opacity:0,force3D:true});
+      ScrollTrigger.batch(catCards,{start:"top 92%",once:true,onEnter:batch=>{
+        batch.forEach(c=>c.style.willChange="transform,opacity");
+        gsap.to(batch,{xPercent:0,opacity:1,duration:.9,ease:"power3.out",stagger:.12,force3D:true,
+          onComplete:()=>batch.forEach(c=>{c.style.willChange="";gsap.set(c,{clearProps:"transform"})})});
+      }});
+    }
     if(matchMedia("(hover:hover)").matches) gsap.utils.toArray(".cat").forEach(c=>{
       c.addEventListener("pointerenter",()=>gsap.to(c,{y:-8,duration:.4,ease:"power3.out"}));
       c.addEventListener("pointerleave",()=>gsap.to(c,{y:0,duration:.5,ease:"power3.out"}));
