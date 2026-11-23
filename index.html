@@ -29,6 +29,9 @@ html,body,*{scrollbar-width:none;-ms-overflow-style:none}
 html.lenis,html.lenis body{height:auto}
 .lenis.lenis-smooth{scroll-behavior:auto!important}
 .lenis.lenis-stopped{overflow:hidden}
+/* touch devices (no Lenis): native smooth anchor scrolling that clears the docked header; lock page while overlays are open */
+html:not(.lenis){scroll-behavior:smooth;scroll-padding-top:80px}
+html.locked,html.locked body{overflow:hidden}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 a,button,input,label{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .btn:active,.add:active,.chip:active,.cart-btn:active,.burger:active{transform:scale(.96)}
@@ -622,8 +625,8 @@ $("#items").onclick=e=>{
   if(r) delete cart[r.dataset.rm];
   if(q||r){save();renderCart()}
 };
-function openDrawer(){$("#drawer").classList.add("on");$("#scrim").classList.add("on");window.lenis&&lenis.stop();onDrawerOpen()}
-function closeAll(){["#drawer","#scrim","#modal"].forEach(s=>$(s).classList.remove("on"));window.lenis&&lenis.start()}
+function openDrawer(){$("#drawer").classList.add("on");$("#scrim").classList.add("on");document.documentElement.classList.add("locked");window.lenis&&lenis.stop();onDrawerOpen()}
+function closeAll(){["#drawer","#scrim","#modal"].forEach(s=>$(s).classList.remove("on"));if(!$("#mnav").classList.contains("on"))document.documentElement.classList.remove("locked");window.lenis&&lenis.start()}
 $("#cartBtn").onclick=openDrawer;
 $("#scrim").onclick=closeAll;
 document.addEventListener("click",e=>{if(e.target.closest("[data-close]"))closeAll()});
@@ -649,7 +652,7 @@ function openModal(id){
     $("#mPrice").textContent=money(lineInfo(pack==="Single can"?String(id):`${id}|${pack}`).unit);
   };
   $("#mAdd").onclick=()=>{flyToCart($("#modalBox .modal-media .can"));add(id,1,pack==="Single can"?null:pack);closeAll()};
-  $("#modal").classList.add("on");$("#scrim").classList.add("on");window.lenis&&lenis.stop();
+  $("#modal").classList.add("on");$("#scrim").classList.add("on");document.documentElement.classList.add("locked");window.lenis&&lenis.stop();
   onModalOpen();
 }
 // motion hooks; replaced by the GSAP layer below when it loads
@@ -668,13 +671,19 @@ $("#newsForm").onsubmit=e=>{e.preventDefault();e.target.style.display="none";$("
 function setMenu(open){
   $("#mnav").classList.toggle("on",open); document.body.classList.toggle("menu-open",open);
   $("#burger").setAttribute("aria-expanded",open); $("#burger").setAttribute("aria-label",open?"Close menu":"Menu");
+  document.documentElement.classList.toggle("locked",open);
   if(window.lenis) open?lenis.stop():lenis.start();
 }
 $("#burger").onclick=()=>setMenu(!$("#mnav").classList.contains("on"));
 $("#mnav").onclick=e=>{if(e.target.tagName==="A")setMenu(false)};
 // header rides on the hero card, then docks to the top once the card has scrolled away
 const hdr=$("#siteHeader");
-addEventListener("scroll",()=>hdr.classList.toggle("stuck",scrollY>$(".hero-card").getBoundingClientRect().top+scrollY+140),{passive:true});
+let dockAt=0, docked=false, ticking=false;
+const measureDock=()=>{ if(!docked) dockAt=$(".hero-card").getBoundingClientRect().top+scrollY+140; };
+const onScroll=()=>{ if(ticking)return; ticking=true; requestAnimationFrame(()=>{ ticking=false;
+  const d=scrollY>dockAt; if(d!==docked){ docked=d; hdr.classList.toggle("stuck",d); } }); };
+measureDock(); addEventListener("resize",measureDock,{passive:true}); addEventListener("load",measureDock);
+addEventListener("scroll",onScroll,{passive:true}); onScroll();
 renderCart();
 </script>
 
@@ -715,11 +724,14 @@ renderCart();
   mm.add("(prefers-reduced-motion: no-preference)",()=>{
     document.documentElement.classList.add("gsap");
     const isDesk=matchMedia("(min-width:761px)").matches;
+    // Touch screens scroll natively; anything recomputed on every scroll frame there causes stutter.
+    // On touch: no smooth-scroll library, no scroll-scrubbed timelines, effects play once as timed animations.
+    const touch=matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0;
 
 
 
     // smooth, eased wheel scrolling (touch keeps native momentum)
-    if(window.Lenis){
+    if(window.Lenis&&!touch){
       window.lenis=new Lenis({duration:1.1,easing:t=>Math.min(1,1.001-Math.pow(2,-10*t)),smoothWheel:true});
       lenis.on("scroll",ScrollTrigger.update);
       gsap.ticker.add(t=>lenis.raf(t*1000));
@@ -737,7 +749,7 @@ renderCart();
     const tick=gsap.to(".ticker-track",{xPercent:-50,ease:"none",duration:30,repeat:-1});
     const tickSpeed=gsap.quickTo(tick,"timeScale",{duration:.6,ease:"power2.out"});
     let settle;
-    ScrollTrigger.create({onUpdate:st=>{
+    if(!touch) ScrollTrigger.create({onUpdate:st=>{
       tickSpeed(1+Math.min(4,Math.abs(st.getVelocity())/500));
       clearTimeout(settle); settle=setTimeout(()=>tickSpeed(1),160);
     }});
@@ -758,9 +770,9 @@ renderCart();
       .from(".glass",{y:36,opacity:0,duration:.7},.55)
       .from(".glass .btn",{y:14,opacity:0,stagger:.06,duration:.5},.75);
 
-    // hero scroll-out: cans spread apart, title drifts down & fades
-    const heroTL=gsap.timeline({scrollTrigger:{trigger:".hero-card",start:"top top",end:"bottom top",scrub:.6}});
-    heroTL.to(".hc1",{xPercent:-60,yPercent:-25,rotation:-48,ease:"none"},0)
+    // hero scroll-out: cans spread apart, title drifts down & fades (mouse/trackpad only)
+    if(!touch) gsap.timeline({scrollTrigger:{trigger:".hero-card",start:"top top",end:"bottom top",scrub:.6}})
+      .to(".hc1",{xPercent:-60,yPercent:-25,rotation:-48,ease:"none"},0)
       .to(".hc3",{xPercent:60,yPercent:-25,rotation:46,ease:"none"},0)
       .to(".hc2",{yPercent:-45,scale:1.12,rotation:4,ease:"none"},0)
       .to(".hero h1",{yPercent:35,opacity:.2,ease:"none"},0)
@@ -831,14 +843,15 @@ renderCart();
     gsap.from(".promo-h .pl > span",{yPercent:110,duration:1.1,stagger:.12,ease:"power4.out",scrollTrigger:{trigger:".promo-h",start:"top 80%"}});
     gsap.from(".promo-cta .btn",{y:30,opacity:0,duration:.8,ease:"power3.out",scrollTrigger:{trigger:".promo-cta",start:"top 92%"}});
     // cans stay near the centre and turn slowly as the section scrolls past
-    const promoTL=gsap.timeline({scrollTrigger:{trigger:".promo",start:"top bottom",end:"bottom top",scrub:1}});
-    promoTL.fromTo("#pc1",{yPercent:25,rotation:26},{yPercent:-20,rotation:8,ease:"none"},0)
+    if(!touch) gsap.timeline({scrollTrigger:{trigger:".promo",start:"top bottom",end:"bottom top",scrub:1}})
+      .fromTo("#pc1",{yPercent:25,rotation:26},{yPercent:-20,rotation:8,ease:"none"},0)
       .fromTo("#pc2",{yPercent:-20,rotation:-84},{yPercent:25,rotation:-64,ease:"none"},0);
     // pop in where they stand (no sliding in from the sides)
     gsap.from("#pc1,#pc2",{scale:.6,opacity:0,duration:1.2,stagger:.15,ease:"back.out(1.6)",scrollTrigger:{trigger:".promo",start:"top 70%"}});
     // gentle idle sway on top of the CSS bob
-    gsap.to("#pc1 .can",{rotation:6,y:-22,duration:3.2,ease:"sine.inOut",yoyo:true,repeat:-1});
-    gsap.to("#pc2 .can",{rotation:-7,y:18,duration:4,ease:"sine.inOut",yoyo:true,repeat:-1,delay:.6});
+    const sway=[gsap.to("#pc1 .can",{rotation:6,y:-22,duration:3.2,ease:"sine.inOut",yoyo:true,repeat:-1,paused:true}),
+      gsap.to("#pc2 .can",{rotation:-7,y:18,duration:4,ease:"sine.inOut",yoyo:true,repeat:-1,delay:.6,paused:true})];
+    ScrollTrigger.create({trigger:".promo",start:"top bottom",end:"bottom top",onToggle:st=>sway.forEach(t=>st.isActive?t.play():t.pause())});
     if(isDesk){
       const px1=gsap.quickTo("#pc1","x",{duration:1,ease:"power3"}),py1=gsap.quickTo("#pc1","y",{duration:1,ease:"power3"});
       const px2=gsap.quickTo("#pc2","x",{duration:1.2,ease:"power3"}),py2=gsap.quickTo("#pc2","y",{duration:1.2,ease:"power3"});
@@ -849,10 +862,17 @@ renderCart();
 
     // ---------- reviews ----------
     // the two photos start pushed out past the edges and slide in to meet in the middle
-    const duoTL=gsap.timeline({scrollTrigger:{trigger:"#duo",start:"top bottom",end:"top 15%",scrub:1}});
-    duoTL.fromTo(".duo-l",{xPercent:-38},{xPercent:0,ease:"none"},0)
-      .fromTo(".duo-r",{xPercent:38},{xPercent:0,ease:"none"},0)
-      .fromTo(".duo-img img",{scale:1.15},{scale:1,ease:"none"},0);
+    if(!touch){
+      gsap.timeline({scrollTrigger:{trigger:"#duo",start:"top bottom",end:"top 15%",scrub:1}})
+        .fromTo(".duo-l",{xPercent:-38},{xPercent:0,ease:"none"},0)
+        .fromTo(".duo-r",{xPercent:38},{xPercent:0,ease:"none"},0)
+        .fromTo(".duo-img img",{scale:1.15},{scale:1,ease:"none"},0);
+    }else{
+      // touch: the photos glide together once, on a timer, as the section arrives
+      gsap.timeline({scrollTrigger:{trigger:"#duo",start:"top 85%",once:true}})
+        .fromTo(".duo-l",{xPercent:-38},{xPercent:0,duration:1,ease:"power3.out",force3D:true},0)
+        .fromTo(".duo-r",{xPercent:38},{xPercent:0,duration:1,ease:"power3.out",force3D:true},0);
+    }
     gsap.from(".trust",{scale:.85,opacity:0,duration:1,ease:"power3.out",scrollTrigger:{trigger:".trust",start:"top 85%"}});
     gsap.from(".trust .stars",{letterSpacing:"20px",opacity:0,duration:1.2,ease:"power3.out",delay:.2,scrollTrigger:{trigger:".trust",start:"top 85%"}});
     // the review row scroll-snaps; moving cards inside it makes the browser re-snap every frame (flicker),
