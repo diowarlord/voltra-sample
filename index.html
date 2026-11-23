@@ -61,7 +61,10 @@ header{position:absolute;top:8px;left:24px;right:24px;z-index:50}
 .cart-count{min-width:26px;height:26px;border-radius:13px;background:#fff;color:#000;font-size:13px;font-weight:700;display:grid;place-items:center;padding:0 7px;font-variant-numeric:tabular-nums}
 .cart-count.bump{animation:bump .4s}
 @keyframes bump{50%{transform:scale(1.25)}}
-header.stuck{position:fixed;top:0;left:0;right:0;background:rgba(10,10,14,.94);border-bottom:1px solid var(--line);animation:dock .45s cubic-bezier(.2,.8,.2,1)}
+header.stuck{position:fixed;top:0;left:0;right:0;background:transparent;animation:dock .45s cubic-bezier(.2,.8,.2,1)}
+/* transparent bar: a soft shadow keeps the white logo, links and icons readable over light photos and the white newsletter card */
+header.stuck .logo,header.stuck .links a,header.stuck .icon-btn{text-shadow:0 1px 3px rgba(0,0,0,.55),0 0 14px rgba(0,0,0,.35)}
+header.stuck svg{filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 header.stuck .nav{height:66px;max-width:var(--wrap);margin:0 auto;padding:0 24px}
 header.stuck .logo.wordmark{font-size:26px}
 header.stuck .links{font-size:17px}
