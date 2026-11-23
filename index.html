@@ -19,6 +19,9 @@
   --display:"Unbounded",system-ui,sans-serif; --body:"Manrope",system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+/* hide scroll bars everywhere; scrolling still works (wheel, touch, keys) */
+html,body,*{scrollbar-width:none;-ms-overflow-style:none}
+::-webkit-scrollbar{display:none;width:0;height:0}
 html.lenis,html.lenis body{height:auto}
 .lenis.lenis-smooth{scroll-behavior:auto!important}
 .lenis.lenis-stopped{overflow:hidden}
