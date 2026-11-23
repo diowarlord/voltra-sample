@@ -48,7 +48,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .ticker-track span{display:inline-flex;align-items:center;gap:18px;padding-right:18px}
 .ticker .bolt{flex:none;width:14px;height:16px;max-width:none}
 @keyframes tick{to{transform:translateX(-50%)}}
-.gsap .ticker-track{animation:none}
+.gsap.fine .ticker-track{animation:none}
+/* looping decorations pause while off-screen, so the rest of the page scrolls with no background animation work */
+.ticker.offscreen .ticker-track,.hero-card.offscreen .hc .can{animation-play-state:paused}
 
 /* header: rides on top of the hero card, then docks to the viewport */
 .hero{position:relative}
@@ -678,13 +680,23 @@ $("#burger").onclick=()=>setMenu(!$("#mnav").classList.contains("on"));
 $("#mnav").onclick=e=>{if(e.target.tagName==="A")setMenu(false)};
 // header rides on the hero card, then docks to the top once the card has scrolled away
 const hdr=$("#siteHeader");
-let dockAt=0, docked=false, ticking=false;
+let dockAt=Infinity, docked=false, ticking=false;
 const measureDock=()=>{ if(!docked) dockAt=$(".hero-card").getBoundingClientRect().top+scrollY+140; };
 const onScroll=()=>{ if(ticking)return; ticking=true; requestAnimationFrame(()=>{ ticking=false;
   const d=scrollY>dockAt; if(d!==docked){ docked=d; hdr.classList.toggle("stuck",d); } }); };
-measureDock(); addEventListener("resize",measureDock,{passive:true}); addEventListener("load",measureDock);
-addEventListener("scroll",onScroll,{passive:true}); onScroll();
+// measured after load (not while the page is still being built: reading layout mid-parse forced an extra full layout)
+addEventListener("resize",measureDock,{passive:true});
+addEventListener("load",()=>requestAnimationFrame(()=>{measureDock();onScroll()}));
+addEventListener("scroll",onScroll,{passive:true});
 renderCart();
+// pause looping decorations (ticker, bobbing hero cans) whenever they are scrolled out of view
+if("IntersectionObserver" in window){
+  const loopIO=new IntersectionObserver(es=>es.forEach(e=>{
+    e.target.classList.toggle("offscreen",!e.isIntersecting);
+    if(e.target.classList.contains("ticker")&&window.__tick) e.isIntersecting?__tick.play():__tick.pause();
+  }));
+  loopIO.observe($(".ticker")); loopIO.observe($(".hero-card"));
+}
 </script>
 
 <script src="assets/vendor/gsap.min.js"></script>
@@ -746,13 +758,18 @@ renderCart();
     }
 
     // ticker loop: speeds up with scroll velocity (one eased tween, no per-frame tween spam)
-    const tick=gsap.to(".ticker-track",{xPercent:-50,ease:"none",duration:30,repeat:-1});
-    const tickSpeed=gsap.quickTo(tick,"timeScale",{duration:.6,ease:"power2.out"});
-    let settle;
-    if(!touch) ScrollTrigger.create({onUpdate:st=>{
-      tickSpeed(1+Math.min(4,Math.abs(st.getVelocity())/500));
-      clearTimeout(settle); settle=setTimeout(()=>tickSpeed(1),160);
-    }});
+    // On touch screens the ticker stays a pure CSS animation: it runs on the compositor and costs the
+    // main thread nothing (a script-driven loop here kept the phone busy every single frame).
+    if(!touch){
+      document.documentElement.classList.add("fine");
+      const tick=window.__tick=gsap.to(".ticker-track",{xPercent:-50,ease:"none",duration:30,repeat:-1});
+      const tickSpeed=gsap.quickTo(tick,"timeScale",{duration:.6,ease:"power2.out"});
+      let settle;
+      ScrollTrigger.create({onUpdate:st=>{
+        tickSpeed(1+Math.min(4,Math.abs(st.getVelocity())/500));
+        clearTimeout(settle); settle=setTimeout(()=>tickSpeed(1),160);
+      }});
+    }
 
     // ---------- hero intro ----------
     const h1=$(".hero h1");
@@ -787,6 +804,9 @@ renderCart();
       });
     }
 
+    // Everything below the hero is set up once the browser is idle, so measuring ~30 scroll triggers
+    // (a forced layout) doesn't land on the first frames of the intro.
+    const setupBelowFold=()=>{
     // ---------- section kickers ----------
     gsap.utils.toArray(".kicker").forEach(k=>{
       const b=k.querySelector("b");
@@ -894,6 +914,10 @@ renderCart();
       b.addEventListener("pointermove",e=>{const r=b.getBoundingClientRect();x((e.clientX-r.left-r.width/2)*.3);y((e.clientY-r.top-r.height/2)*.3)});
       b.addEventListener("pointerleave",()=>{x(0);y(0)});
     });
+
+    ScrollTrigger.refresh();
+    };
+    (window.requestIdleCallback||(f=>setTimeout(f,200)))(setupBelowFold,{timeout:900});
 
     // ---------- interaction hooks ----------
     flyToCart=src=>{
